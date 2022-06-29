@@ -87,8 +87,9 @@ void loop()
 		Serial.print("Acquired IP: ");
 		Serial.println(WiFi.localIP().toString());
 
+		String dt = timeyWimey.getFormattedDateTime();
 		Serial.print("Updated time via NTP: ");
-		Serial.println(timeyWimey.getFormattedDateTime());
+		Serial.println(dt);
 	}
 
 	if (lastUpdateMinute != currentMinute)

@@ -3,11 +3,14 @@
 #include <WiFiMulti.h>
 #include "wibblywobbly.h"
 
-const size_t  BUFF_SIZE  = 256;
-const int     TZ_OFFSET  = -5;
-const char*   WIFI_SSID  = "intarweb";
-const char*   WIFI_PASS  = "mixed compositions";
-const char*   NTP_SERVER = "us.pool.ntp.org";
+#define STRINGIFY(x) #x
+#define TOSTRING(x) STRINGIFY(x)
+
+const size_t  BUFF_SIZE      = 256;
+const int     TZ_OFFSET      = -5;
+const char*   WIFI_NETWORK   = TOSTRING(WIFI_SSID);
+const char*   WIFI_PASSWORD  = TOSTRING(WIFI_PASS);
+const char*   NTP_SERVER     = TOSTRING(NTP_POOL);
 
 WiFiMulti wifi;
 WibblyWobbly timeyWimey(NTP_SERVER, TZ_OFFSET);
@@ -21,7 +24,7 @@ void setup(void)
 	Serial.begin(115200);
 	M5.begin(true, true, true);
 
-	wifi.addAP(WIFI_SSID, WIFI_PASS);
+	wifi.addAP(WIFI_NETWORK, WIFI_PASSWORD);
 
 	int attempts = 60;
 	while (attempts > 0)

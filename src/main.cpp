@@ -1,56 +1,84 @@
-#define KOLOR_BLACK   0x0000
-#define KOLOR_WHITE   0xFFFF
-#define KOLOR_GRAY_LT 0xBDF7
-#define KOLOR_GRAY_DK 0x7BEF
-#define KOLOR_RED     0xF800
-#define KOLOR_YELLOW  0xFFE0
-#define KOLOR_ORANGE  0xFBE0
-#define KOLOR_BROWN   0x79E0
-#define KOLOR_GREEN   0x7E0
-#define KOLOR_CYAN    0x7FF
-#define KOLOR_BLUE    0x1F
-#define KOLOR_PINK    0xF81F
+#include <M5StickCPlus.h>
+#include <WiFi.h>
+#include <WiFiMulti.h>
+#include "wibblywobbly.h"
 
-#include <TFT_eSPI.h>
-#include <SPI.h>
+const size_t  BUFF_SIZE  = 256;
+const int     TZ_OFFSET  = -5;
+const char*   WIFI_SSID  = "intarweb";
+const char*   WIFI_PASS  = "mixed compositions";
+const char*   NTP_SERVER = "us.pool.ntp.org";
 
-TFT_eSPI tft = TFT_eSPI();
-uint32_t targetTime = 0;
-byte omm = 99;
-bool initial = 1;
-byte xcolon = 0;
+WiFiMulti wifi;
+WibblyWobbly timeyWimey(NTP_SERVER, TZ_OFFSET);
 
-uint32_t kClockForeground = KOLOR_PINK;
-uint32_t kClockBackground = TFT_BLACK;
-uint32_t kClockColonForeground = KOLOR_ORANGE;
-
-static uint8_t conv2d(const char *p)
-{
-	uint8_t v = 0;
-
-	if ('0' <= *p && *p <= '9')
-		v = *p - '0';
-	return 10 * v + *++p - '0';
-}
-
-// TODO: ntp
-uint8_t hh = conv2d(__TIME__),
-        mm = conv2d(__TIME__ + 3),
-		ss = conv2d(__TIME__ + 6); // Get H, M, S from compile time
+bool initial = true;
+bool connected = false;
+int currentMinute, lastUpdateMinute;
 
 void setup(void)
 {
-	tft.init();
-	tft.setRotation(1);
-	tft.fillScreen(kClockBackground);
+	Serial.begin(115200);
+	M5.begin(true, true, true);
 
-	tft.setTextColor(TFT_YELLOW, kClockBackground);
+	wifi.addAP(WIFI_SSID, WIFI_PASS);
 
-	targetTime = millis() + 1000;
+	int attempts = 60;
+	while (attempts > 0)
+	{
+		if (wifi.run() == WL_CONNECTED)
+		{
+			attempts = -1;
+			connected = true;
+		}
+		else
+		{
+			attempts--;
+			delay(1000);
+		}
+	}
 }
 
 void loop()
 {
+	if (!connected)
+		return;
+
+	struct tm now = timeyWimey.tm();
+	
+	if (initial)
+	{
+		initial = false;
+
+		lastUpdateMinute = now.tm_hour;
+		currentMinute = -1;
+
+		Serial.print("Acquired IP: ");
+		Serial.println(WiFi.localIP().toString());
+
+		Serial.print("Updated time via NTP: ");
+		Serial.println(timeyWimey.getFormattedDateTime());
+	}
+
+	if (lastUpdateMinute != currentMinute)
+	{
+		M5.lcd.setRotation(1);
+		M5.lcd.fillScreen(TFT_BLACK);
+
+		M5.lcd.setCursor(6, 6);
+		M5.lcd.setTextSize(1);		
+		M5.lcd.setTextColor(TFT_WHITE);
+		M5.lcd.printf("IP: %s", WiFi.localIP().toString());
+
+		M5.lcd.setCursor(22, 45);
+		M5.lcd.setTextSize(4);
+		M5.lcd.setTextColor(TFT_DARKCYAN);
+		M5.lcd.println(timeyWimey.getFormattedTime());
+	}
+
+	delay(1000);
+
+/*
 	if (targetTime < millis())
 	{
 		targetTime = millis() + 1000;
@@ -77,54 +105,44 @@ void loop()
 		if (ss == 0 || initial)
 		{
 			initial = 0;
-			tft.setTextColor(TFT_GREEN, kClockBackground);
-			tft.setCursor(26, 52);
-			tft.print(__DATE__);
+			
+			tft.setTextColor(KOLOR_GRAY_LT, clockBackgroundColor);
+			tft.setFreeFont(FSB9);
 
-			tft.setTextColor(TFT_BLUE, kClockBackground);
-			tft.drawCentreString("It is windy", 120, 48, 2); // Next size up font 2
+			byte dateX = (TFT_HEIGHT / 2);
+			byte dateY = (TFT_WIDTH / 2) - tft.fontHeight(GFXFF);
+
+			tft.drawCentreString(__DATE__, dateX, dateY, GFXFF);
 		}
 
 		// Update digital time
-		byte xpos = (TFT_HEIGHT / 2) - tft.fontHeight(7);
-		byte ypos = (TFT_WIDTH / 2) - (tft.textWidth("88:88") / 2);
-		//byte xpos = 25;
-		//byte ypos = 25;
+		tft.setCursor(0, 0);
+		byte xpos = (TFT_WIDTH / 2) - (tft.textWidth("88:88") / 2);
+		byte ypos = (TFT_HEIGHT / 2) - tft.fontHeight(7);
 
 		// Only redraw every minute to minimise flicker
 		if (omm != mm)
 		{
-			tft.setTextColor(kClockBackground, kClockBackground);			
+			tft.setTextColor(clockBackgroundColor, clockBackgroundColor);			
 			tft.drawString("88:88", xpos, ypos, 7);
 
-			tft.setTextColor(kClockForeground);
+			tft.setTextColor(clockForegroundColor);
 			omm = mm;
 
 			if (hh < 10)
-				xpos += tft.drawChar('0', xpos, ypos, 7);
+				xpos += tft.drawChar('0', xpos, ypos, clockFont);
 
-			xpos += tft.drawNumber(hh, xpos, ypos, 7);
+			xpos += tft.drawNumber(hh, xpos, ypos, clockFont);
 			xcolon = xpos;
-			tft.setTextColor(kClockColonForeground, kClockBackground);
-			xpos += tft.drawChar(':', xpos, ypos, 7);
-			tft.setTextColor(kClockForeground, kClockBackground);
+			tft.setTextColor(colonForegroundColor, clockBackgroundColor);
+			xpos += tft.drawChar(':', xpos, ypos, clockFont);
+			tft.setTextColor(clockForegroundColor, clockBackgroundColor);
 
 			if (mm < 10)
-				xpos += tft.drawChar('0', xpos, ypos, 7);
+				xpos += tft.drawChar('0', xpos, ypos, clockFont);
 
-			tft.drawNumber(mm, xpos, ypos, 7);
-		}
-
-		if (ss % 2)
-		{
-			// Flash the colon
-			tft.setTextColor(KOLOR_BLACK, kClockBackground);
-			xpos += tft.drawChar(':', xcolon, ypos, 7);
-			tft.setTextColor(kClockColonForeground, kClockBackground);
-		}
-		else
-		{
-			tft.drawChar(':', xcolon, ypos, 7);
+			tft.drawNumber(mm, xpos, ypos, clockFont);
 		}
 	}
+*/
 }

@@ -24,9 +24,16 @@ void setup(void)
 	Serial.begin(115200);
 	M5.begin(true, true, true);
 
+	M5.lcd.setRotation(1);
+	M5.lcd.fillScreen(TFT_GREEN);
+	M5.lcd.setTextColor(TFT_BLACK);
+	M5.lcd.setCursor(12, 12);
+	M5.lcd.setTextSize(2);
+	M5.lcd.println("Booting...");
+
 	wifi.addAP(WIFI_NETWORK, WIFI_PASSWORD);
 
-	int attempts = 60;
+	int attempts = 3;
 	while (attempts > 0)
 	{
 		if (wifi.run() == WL_CONNECTED)
@@ -44,6 +51,27 @@ void setup(void)
 
 void loop()
 {
+	if (initial && !connected)
+	{
+		M5.lcd.setRotation(1);
+		M5.lcd.fillScreen(TFT_BLACK);
+
+		M5.lcd.setCursor(6, 6);
+		M5.lcd.setTextSize(5);
+		M5.lcd.setTextColor(TFT_RED);
+		M5.lcd.println("error:");
+		M5.lcd.setCursor(6, 3 + M5.lcd.getCursorY());
+		M5.lcd.println("no wifi");
+
+		M5.lcd.setCursor(125, 95);
+		M5.lcd.setTextSize(3);
+		M5.lcd.setTextColor(TFT_DARKGREY);
+		M5.lcd.print(":(");
+
+		initial = false;
+		//M5.Beep.setBeep(4000, 2000);
+	}
+
 	if (!connected)
 		return;
 
@@ -69,7 +97,7 @@ void loop()
 		M5.lcd.fillScreen(TFT_BLACK);
 
 		M5.lcd.setCursor(6, 6);
-		M5.lcd.setTextSize(1);		
+		M5.lcd.setTextSize(1);
 		M5.lcd.setTextColor(TFT_WHITE);
 		M5.lcd.printf("IP: %s", WiFi.localIP().toString());
 

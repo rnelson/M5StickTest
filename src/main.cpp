@@ -2,6 +2,7 @@
 #include <WiFi.h>
 #include <WiFiMulti.h>
 #include "wibblywobbly.h"
+#include "funwithwifi.h"
 
 #define STRINGIFY(x) #x
 #define TOSTRING(x) STRINGIFY(x)
@@ -23,6 +24,8 @@ void setup(void)
 {
 	Serial.begin(115200);
 	M5.begin(true, true, true);
+
+	Serial.printf("Beginning setup()\n");
 
 	M5.lcd.setRotation(1);
 	M5.lcd.fillScreen(TFT_GREEN);
@@ -47,10 +50,15 @@ void setup(void)
 			delay(1000);
 		}
 	}
+
+	Serial.printf("Completed setup()\n");
 }
 
 void loop()
 {
+	Serial.printf("loop()\n");
+
+	/*
 	if (initial && !connected)
 	{
 		M5.lcd.setRotation(1);
@@ -107,6 +115,24 @@ void loop()
 		M5.lcd.setTextColor(TFT_DARKCYAN);
 		M5.lcd.println(timeyWimey.getFormattedTime());
 	}
+	*/
 
+	if (initial) {
+		M5.lcd.setRotation(1);
+		M5.lcd.fillScreen(TFT_BLACK);
+		M5.lcd.setTextColor(TFT_GREEN);
+		M5.lcd.setCursor(6, 6);
+		M5.lcd.setTextSize(1);
+	}
+
+	Serial.printf("Delaying 1s\n");
 	delay(1000);
+
+	Serial.printf("Spamming funny SSIDs\n");
+	beaconSpamList(funnyssids);
+
+	/*
+	Serial.printf("Adding Rick Roll SSIDs\n");
+	beaconSpamList(rickrollssids);
+	*/
 }
